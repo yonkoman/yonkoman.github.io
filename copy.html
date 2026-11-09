@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>댓글 복사</title>
+<style>
+  :root { --bg:#fff; --text:#000; --muted:#8a8a8a; --line:#e5e5e5; --soft:#f2f2f2; --accent:#000; --accent-text:#fff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#101010; --text:#f3f3f3; --muted:#777; --line:#2a2a2a; --soft:#1e1e1e; --accent:#f3f3f3; --accent-text:#101010; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+         font-size: 16px; line-height: 1.5; padding: 24px 16px; }
+  .wrap { max-width: 520px; margin: 0 auto; }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  p { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+  textarea { width: 100%; min-height: 150px; padding: 12px; border: 1px solid var(--line); border-radius: 12px;
+             background: var(--soft); color: var(--text); font: inherit; resize: vertical; outline: none; }
+  .count { font-size: 12px; color: var(--muted); text-align: right; margin: 4px 0 16px; }
+  button { width: 100%; padding: 14px; border-radius: 12px; font: inherit; font-weight: 700; cursor: pointer;
+           border: 1px solid var(--accent); background: var(--accent); color: var(--accent-text); }
+  button.sub { background: transparent; color: var(--text); border-color: var(--line); margin-top: 8px; font-weight: 600; }
+  .msg { text-align: center; margin-top: 12px; font-size: 14px; color: var(--muted); min-height: 1.5em; }
+  .err { padding: 40px 0; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+(() => {
+  // 내용은 주소의 # 뒤에만 담겨서 서버로 전송되지 않는다.
+  const params = new URLSearchParams(location.hash.slice(1));
+  const text = params.get("t") || "";
+  const url = params.get("u") || "";
+  const okUrl = /^https:\/\/(www\.)?threads\.(com|net)\//.test(url);
+  const app = document.getElementById("app");
+
+  if (!text) {
+    app.innerHTML = '<div class="err">복사할 내용이 없어. 메일의 버튼으로 다시 열어줘.</div>';
+    return;
+  }
+
+  app.innerHTML = `
+    <h1>댓글 초안</h1>
+    <p>고칠 게 있으면 여기서 고치고, 버튼을 누르면 복사된 채로 스레드가 열려. 댓글 칸에 붙여넣기만 하면 돼.</p>
+    <textarea id="t"></textarea>
+    <div class="count" id="c"></div>
+    <button id="go">${okUrl ? "복사하고 스레드 열기" : "복사하기"}</button>
+    ${okUrl ? '<button class="sub" id="copy">복사만 하기</button>' : ""}
+    <div class="msg" id="m" role="status" aria-live="polite"></div>`;
+
+  const ta = document.getElementById("t");
+  const c = document.getElementById("c");
+  const m = document.getElementById("m");
+  ta.value = text;
+  const count = () => (c.textContent = `${[...ta.value].length}자`);
+  count();
+  ta.addEventListener("input", count);
+
+  async function copy() {
+    const v = ta.value.trim();
+    try {
+      await navigator.clipboard.writeText(v);
+      return true;
+    } catch {
+      ta.focus(); ta.select();
+      try { return document.execCommand("copy"); } catch { return false; }
+    }
+  }
+
+  document.getElementById("go").addEventListener("click", async () => {
+    const ok = await copy();
+    if (!ok) { m.textContent = "자동 복사가 안 돼. 글을 길게 눌러 직접 복사해줘."; return; }
+    if (okUrl) {
+      m.textContent = "복사했어. 스레드 여는 중…";
+      setTimeout(() => (location.href = url), 300);
+    } else {
+      m.textContent = "복사했어.";
+    }
+  });
+  const copyOnly = document.getElementById("copy");
+  if (copyOnly) copyOnly.addEventListener("click", async () => {
+    m.textContent = (await copy()) ? "복사했어." : "자동 복사가 안 돼. 글을 길게 눌러 직접 복사해줘.";
+  });
+})();
+</script>
+</body>
+</html>
